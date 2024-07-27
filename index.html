@@ -1,0 +1,133 @@
+<html>
+
+<head>
+    <title>東京都 建物現況マップ（PMTiles）</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/pmtiles@2.11.0/dist/index.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script type="text/javascript">
+        // addProtocolの設定
+        let protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol('pmtiles', (request) => {
+            return new Promise((resolve, reject) => {
+                const callback = (err, data) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve({ data });
+                    }
+                };
+                protocol.tile(request, callback);
+            });
+        });
+
+        // マップの初期化
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'skeleton.json',
+            hash: true,
+            zoom: 17.59,
+            center: [139.664761, 35.707667],
+            pitch: 69,
+            bearing: 18.6,
+            maxPitch: 85,
+            attributionControl: false,
+        })
+
+        // ズーム・回転
+        map.addControl(new maplibregl.NavigationControl());
+
+        // フルスクリーンモードのオンオフ
+        map.addControl(new maplibregl.FullscreenControl());
+
+        // 現在位置表示
+        map.addControl(new maplibregl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: false
+            },
+            fitBoundsOptions: { maxZoom: 18 },
+            trackUserLocation: true,
+            showUserLocation: true
+        }));
+
+        // スケール表示
+        map.addControl(new maplibregl.ScaleControl({
+            maxWidth: 200,
+            unit: 'metric'
+        }));
+
+        // Attributionを折りたたみ表示
+        map.addControl(
+            new maplibregl.AttributionControl({
+                compact: true,
+                customAttribution: '<a href="https://twitter.com/shi__works" target="_blank">X(旧Twitter)</a>',
+            })
+        );
+
+        map.on('load', () => {
+            // 区部建物現況（PMTiles）ソース
+            map.addSource("kubu-building", {
+                type: "vector",
+                url: "pmtiles://https://shiworks.xsrv.jp/pmtiles-data/tokyo/R03Building.pmtiles",
+                minzoom: 16,
+                maxzoom: 16,
+                attribution: '<a href="https://catalog.data.metro.tokyo.lg.jp/dataset/t000008d2000000019">東京都 土地利用現況調査GISデータ</a>'
+            });
+
+            // 区部建物現況（PMTiles）レイヤ
+            map.addLayer({
+                'id': 'kubu-building',
+                'source': 'kubu-building',
+                'source-layer': "R03Building",
+                "minzoom": 16,
+                "maxzoom": 23,
+                'type': 'fill-extrusion',
+                'paint': {
+                    "fill-extrusion-color": '#FFFFFF',
+                    "fill-extrusion-opacity": 1,
+                    "fill-extrusion-height": ["get", "BV_15"]
+                },
+                /*
+                'filter': [
+                    'all',
+                    ['==', ['get', 'city'], '東京都中野区'],
+                    ['!=', ['get', 'id'], 'bldg_5b99baae-06d4-40e1-8574-c4a3a1e78a32']
+                ]
+                */
+            });
+
+            // Skyレイヤ
+            map.setSky({
+                "sky-color": "#199EF3",
+                "sky-horizon-blend": 0.7,
+                "horizon-color": "#f0f8ff",
+                "horizon-fog-blend": 0.8,
+                "fog-color": "#2c7fb8",
+                "fog-ground-blend": 0.9,
+                "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 12, 0]
+            });
+
+        })
+    </script>
+</body>
+
+</html>
